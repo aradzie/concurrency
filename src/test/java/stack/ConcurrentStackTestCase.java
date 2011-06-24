@@ -202,9 +202,15 @@ public abstract class ConcurrentStackTestCase {
         }
 
         void report() {
-            int p = count / time;
-            System.out.println(String.format("%s: %s: %d push-pop/msec",
-                    name, stack.getClass().getSimpleName(), p));
+            if (time > 0) {
+                int p = count / time;
+                System.out.println(String.format("%s: %s: %d push-pop/msec",
+                        name, stack.getClass().getSimpleName(), p));
+            }
+            else {
+                System.out.println(String.format("%s: %s: what a terrible failure",
+                        name, stack.getClass().getSimpleName()));
+            }
         }
     }
 
