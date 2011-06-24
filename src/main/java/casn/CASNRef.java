@@ -8,10 +8,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * refs in one atomic transaction. This is a generalization of the
  * {@link AtomicReference} operation to multiple values.
  * <p/>
- * <p>This class implements algorithm described in the publication
+ * This class implements algorithm described in the publication
  * <a href="http://research.microsoft.com/en-us/um/people/tharris/papers/2002-disc.pdf">A
  * Practical Multi-Word Compare-and-Swap Operation</a> by Timothy L. Harris, Keir Fraser
- * and Ian Pratt.</p>
+ * and Ian Pratt.
  */
 public final class CASNRef<T> {
     /**
