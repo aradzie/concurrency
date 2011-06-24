@@ -11,7 +11,7 @@ public final class Backoff {
             = Runtime.getRuntime().availableProcessors();
     private static final Random R = new Random();
     private final int minDelay, maxDelay;
-    private int limit;
+    private volatile int limit;
 
     public Backoff(int min, int max) {
         minDelay = min;
