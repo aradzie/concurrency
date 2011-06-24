@@ -40,7 +40,7 @@ public class BackoffLockFreeStack<T> implements ConcurrentStack<T> {
             if (node.push(top)) {
                 return;
             }
-            backoff = Backoff.backoff(backoff);
+            backoff();
         }
     }
 
@@ -63,7 +63,18 @@ public class BackoffLockFreeStack<T> implements ConcurrentStack<T> {
             if (node.pop(top)) {
                 return node.value;
             }
-            backoff = Backoff.backoff(backoff);
+            backoff();
         }
+    }
+
+    private void backoff() {
+        if (backoff == null) {
+            synchronized (this) {
+                if (backoff == null) {
+                    backoff = new Backoff(1, 10);
+                }
+            }
+        }
+        backoff.backoff();
     }
 }

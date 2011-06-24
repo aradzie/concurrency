@@ -131,7 +131,7 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
             if (head.prepend(size, e)) {
                 break;
             }
-            backoff = Backoff.backoff(backoff);
+            backoff();
         }
         return true;
     }
@@ -142,7 +142,7 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
             if (head.nth(index).prepend(size, e)) {
                 return;
             }
-            backoff = Backoff.backoff(backoff);
+            backoff();
         }
     }
 
@@ -256,6 +256,17 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
     @Override
     public ListIterator<E> listIterator(int index) {
         return new IteratorImpl(index);
+    }
+
+    private void backoff() {
+        if (backoff == null) {
+            synchronized (this) {
+                if (backoff == null) {
+                    backoff = new Backoff(1, 10);
+                }
+            }
+        }
+        backoff.backoff();
     }
 
     private static boolean equals(Object a, Object b) {

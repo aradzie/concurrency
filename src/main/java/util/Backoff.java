@@ -13,14 +13,6 @@ public final class Backoff {
     private final int minDelay, maxDelay;
     private int limit;
 
-    public static Backoff backoff(Backoff backoff) {
-        if (backoff == null) {
-            backoff = new Backoff(1, 30);
-        }
-        backoff.backoff();
-        return backoff;
-    }
-
     public Backoff(int min, int max) {
         minDelay = min;
         maxDelay = max;
