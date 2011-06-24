@@ -1,14 +1,16 @@
 package casn;
 
 import org.junit.Test;
+import util.Util;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.ListIterator;
+import java.util.Set;
 
 import static org.junit.Assert.*;
 
 public class LockFreeLinkedListTest {
-    private static final Random R = new Random();
-
     @Test
     public void test() {
         LockFreeLinkedList<String> list = new LockFreeLinkedList<String>();
@@ -72,7 +74,7 @@ public class LockFreeLinkedListTest {
         final LockFreeLinkedList<String> list = new LockFreeLinkedList<String>();
 
         class Runner extends Thread {
-            final Set<String> set = randomSet(1000);
+            final Set<String> set = Util.randomSet(1000);
 
             @Override
             public void run() {
@@ -121,21 +123,5 @@ public class LockFreeLinkedListTest {
         for (Runner runner : group) {
             assertTrue(list.containsAll(runner.set));
         }
-    }
-
-    private static Set<String> randomSet(int size) {
-        HashSet<String> set = new HashSet<String>();
-        for (int n = 0; n < size; n++) {
-            set.add(randomString(10));
-        }
-        return Collections.unmodifiableSet(set);
-    }
-
-    private static String randomString(int length) {
-        char[] c = new char[length];
-        for (int i = 0; i < c.length; i++) {
-            c[i] = (char) ('a' + R.nextInt('z' - 'a') + 1);
-        }
-        return new String(c);
     }
 }

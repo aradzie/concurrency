@@ -1,8 +1,12 @@
 package casn;
 
 import casn.CASNRef.Cell;
+import util.Backoff;
 
-import java.util.*;
+import java.util.AbstractList;
+import java.util.Iterator;
+import java.util.ListIterator;
+import java.util.NoSuchElementException;
 
 import static casn.CASNRef.Cell.cell;
 
@@ -18,47 +22,6 @@ import static casn.CASNRef.Cell.cell;
  * @param <E> List element type.
  */
 public class LockFreeLinkedList<E> extends AbstractList<E> {
-    /**
-     * In case of contention it makes one of the threads step back
-     * to give other threads a change to complete their transactions.
-     */
-    private static class Backoff {
-        static final Random R = new Random();
-        static final int P = Runtime.getRuntime().availableProcessors();
-        final int minDelay, maxDelay;
-        int limit;
-
-        static Backoff backoff(Backoff backoff) {
-            if (backoff == null) {
-                backoff = new Backoff(1, 10);
-            }
-            backoff.backoff();
-            return backoff;
-        }
-
-        Backoff(int min, int max) {
-            minDelay = min;
-            maxDelay = max;
-            limit = minDelay;
-        }
-
-        void backoff() {
-            int delay = R.nextInt(limit);
-            if (limit < maxDelay) {
-                limit = 2 * limit;
-            }
-            if (P > 1) {
-                // Busy waiting on multiprocessor systems.
-                for (int n = 0; n < delay * 10; n++) {
-                    R.nextInt();
-                }
-            } else {
-                // Give another thread chance to run.
-                Thread.yield();
-            }
-        }
-    }
-
     /**
      * Single list node that links
      * to the previous and next one.
@@ -135,14 +98,9 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
         }
     }
 
-    /**
-     * The sentinel node that wraps list around.
-     */
     private final Node<E> head;
-    /**
-     * The current list size.
-     */
     private final CASNRef<Integer> size;
+    private volatile Backoff backoff;
 
     public LockFreeLinkedList() {
         head = new Node<E>();
@@ -169,7 +127,6 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
 
     @Override
     public boolean add(E e) {
-        Backoff backoff = null;
         while (true) {
             if (head.prepend(size, e)) {
                 break;
@@ -181,7 +138,6 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
 
     @Override
     public void add(int index, E e) {
-        Backoff backoff = null;
         while (true) {
             if (head.nth(index).prepend(size, e)) {
                 return;
@@ -235,7 +191,8 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
                 if (n == index) {
                     if (node.remove(size)) {
                         return node.value;
-                    } else {
+                    }
+                    else {
                         break;
                     }
                 }
@@ -256,7 +213,8 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
                 if (equals(node.value, o)) {
                     if (node.remove(size)) {
                         return true;
-                    } else {
+                    }
+                    else {
                         break;
                     }
                 }
@@ -365,7 +323,8 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
                 if (last.remove(size)) {
                     if (next == last) {
                         next = last.next.get();
-                    } else {
+                    }
+                    else {
                         last = head;
                     }
                     break;

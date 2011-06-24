@@ -98,7 +98,8 @@ public final class CASNRef<T> {
             Object v = ref1.ref.get();
             if (v == o1) {
                 ref2.casImpl(this, n2);
-            } else {
+            }
+            else {
                 ref2.casImpl(this, o2);
             }
         }
@@ -150,7 +151,8 @@ public final class CASNRef<T> {
                                 ((CASNDescriptor) r).casnUpdate();
                                 continue;
                             }
-                        } else if (r != cell.o) {
+                        }
+                        else if (r != cell.o) {
                             s = Status.FAILED;
                         }
                         break;
@@ -167,7 +169,8 @@ public final class CASNRef<T> {
                     cell.ref.casImpl(this, cell.n);
                 }
                 return true;
-            } else {
+            }
+            else {
                 for (Cell cell = list; cell != null; cell = cell.next) {
                     cell.ref.casImpl(this, cell.o);
                 }
@@ -236,7 +239,8 @@ public final class CASNRef<T> {
                 if (ref.compareAndSet(o, n)) {
                     return o;
                 }
-            } else {
+            }
+            else {
                 return v;
             }
         }
