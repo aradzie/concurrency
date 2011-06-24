@@ -1,8 +1,6 @@
 package casn;
 
-
-import edu.umd.cs.findbugs.annotations.Nullable;
-
+import javax.annotation.Nullable;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
