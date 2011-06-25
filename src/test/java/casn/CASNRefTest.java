@@ -7,8 +7,7 @@ import static org.junit.Assert.*;
 
 public class CASNRefTest {
     @Test
-    public void nullValue()
-            throws Exception {
+    public void nullValue() {
         CASNRef<String> r = new CASNRef<String>(null);
         assertNull(r.get());
         r.set(null);
