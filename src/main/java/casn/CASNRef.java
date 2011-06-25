@@ -80,7 +80,7 @@ public final class CASNRef<T> {
         Object update() {
             Object r;
             while (true) {
-                r = ref2.casImpl(o2, this);
+                r = ref2.compareAndSwap(o2, this);
                 if (!(r instanceof RDCSSDescriptor)) {
                     break;
                 }
@@ -97,10 +97,10 @@ public final class CASNRef<T> {
         void complete() {
             Object v = ref1.ref.get();
             if (v == o1) {
-                ref2.casImpl(this, n2);
+                ref2.compareAndSwap(this, n2);
             }
             else {
-                ref2.casImpl(this, o2);
+                ref2.compareAndSwap(this, o2);
             }
         }
     }
@@ -161,18 +161,18 @@ public final class CASNRef<T> {
                         break;
                     }
                 }
-                status.casImpl(Status.UNDECIDED, s);
+                status.compareAndSwap(Status.UNDECIDED, s);
             }
             // Phase 2
             if (status.ref.get() == Status.SUCCEEDED) {
                 for (Cell cell = list; cell != null; cell = cell.next) {
-                    cell.ref.casImpl(this, cell.n);
+                    cell.ref.compareAndSwap(this, cell.n);
                 }
                 return true;
             }
             else {
                 for (Cell cell = list; cell != null; cell = cell.next) {
-                    cell.ref.casImpl(this, cell.o);
+                    cell.ref.compareAndSwap(this, cell.o);
                 }
                 return false;
             }
@@ -217,7 +217,7 @@ public final class CASNRef<T> {
     public void set(@Nullable T value) {
         while (true) {
             T o = get();
-            T v = casImpl(o, value);
+            T v = compareAndSwap(o, value);
             if (o == v) {
                 break;
             }
@@ -232,7 +232,27 @@ public final class CASNRef<T> {
         return (T) ncasGet();
     }
 
-    private T casImpl(T o, T n) {
+    /**
+     * Do not confuse this compare-and-swap operation with the standard
+     * compare-and-set operation. The former returns the current value,
+     * while the later returns boolean flag.
+     * <pre><code>
+     * Object expected = ...
+     * Object next = ...
+     * Object current;
+     * if ((current = casImpl(expected, next)) == expected) {
+     *     // succeeded
+     * } else {
+     *     // failed, examine current value
+     * }
+     * </code></pre>
+     *
+     * @param o Expected value.
+     * @param n New value.
+     * @return Current value which is expected value if succeeded,
+     *         or something else if failed.
+     */
+    private T compareAndSwap(T o, T n) {
         while (true) {
             T v = ref.get();
             if (o == v) {
