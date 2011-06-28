@@ -1,6 +1,7 @@
 package stack;
 
 import org.junit.Test;
+import util.ThreadId;
 import util.Util;
 
 import java.util.ArrayList;
@@ -57,6 +58,8 @@ public abstract class ConcurrentStackTestCase {
 
     @Test
     public void perfSequential() {
+        ThreadId.reset();
+
         // Warm up
         {
             ConcurrentStack<Integer> stack = create();
@@ -64,6 +67,8 @@ public abstract class ConcurrentStackTestCase {
             Benchmark benchmark = new Benchmark(SEQUENTIAL, stack);
             benchmark.run();
         }
+
+        ThreadId.reset();
 
         // Run
         {
@@ -77,6 +82,8 @@ public abstract class ConcurrentStackTestCase {
 
     @Test
     public void perfConcurrent() {
+        ThreadId.reset();
+
         // Warm up
         {
             ConcurrentStack<Integer> stack = create();
@@ -87,6 +94,8 @@ public abstract class ConcurrentStackTestCase {
             group.start();
             group.join();
         }
+
+        ThreadId.reset();
 
         // Run
         {
@@ -99,6 +108,10 @@ public abstract class ConcurrentStackTestCase {
             group.join();
 
             group.report();
+
+            if (stack instanceof EliminationBackoffStack) {
+                ((EliminationBackoffStack) stack).dump();
+            }
         }
     }
 
@@ -204,7 +217,7 @@ public abstract class ConcurrentStackTestCase {
         void report() {
             if (time > 0) {
                 int p = count / time;
-                System.out.println(String.format("%s: %s: %d push-pop/msec",
+                System.out.println(String.format("%s: %s: %6d push-pop/msec",
                         name, stack.getClass().getSimpleName(), p));
             }
             else {
