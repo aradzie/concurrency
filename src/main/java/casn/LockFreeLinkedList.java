@@ -1,14 +1,11 @@
 package casn;
 
-import casn.CASNRef.Cell;
 import util.Backoff;
 
 import java.util.AbstractList;
 import java.util.Iterator;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
-
-import static casn.CASNRef.Cell.cell;
 
 /**
  * A list implementation that does not use locks but employs
@@ -67,11 +64,10 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
             Node<E> prev = this.prev.get();
             Node<E> node = new Node<E>(prev, this, e);
             Integer s = size.get();
-            Cell l =
-                    cell(size, s, s + 1,
-                            cell(prev.next, this, node,
-                                    cell(this.prev, prev, node)));
-            return CASNRef.casn(l);
+            return CASNRef.cas3(
+                    size, s, s + 1,
+                    prev.next, this, node,
+                    this.prev, prev, node);
         }
 
         /**
@@ -84,11 +80,10 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
             Node<E> prev = this.prev.get();
             Node<E> next = this.next.get();
             Integer s = size.get();
-            Cell l =
-                    cell(size, s, s - 1,
-                            cell(prev.next, this, next,
-                                    cell(next.prev, this, prev)));
-            return CASNRef.casn(l);
+            return CASNRef.cas3(
+                    size, s, s - 1,
+                    prev.next, this, next,
+                    next.prev, this, prev);
         }
 
         E swap(E v) {
@@ -233,11 +228,10 @@ public class LockFreeLinkedList<E> extends AbstractList<E> {
         while (true) {
             Node<E> prev = head.prev.get();
             Node<E> next = head.next.get();
-            Cell l =
-                    cell(size, size.get(), 0,
-                            cell(head.prev, prev, head,
-                                    cell(head.next, next, head)));
-            if (CASNRef.casn(l)) {
+            if (CASNRef.cas3(
+                    size, size.get(), 0,
+                    head.prev, prev, head,
+                    head.next, next, head)) {
                 break;
             }
         }

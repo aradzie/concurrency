@@ -61,7 +61,7 @@ public final class CASNRef<T> {
     /**
      * Restricted double-compare single-swap helper.
      */
-    private static class RDCSSDescriptor {
+    private static final class RDCSSDescriptor {
         final CASNRef ref1;
         final Object o1;
         final CASNRef ref2;
@@ -123,40 +123,165 @@ public final class CASNRef<T> {
         SUCCEEDED
     }
 
-    /**
-     * Multi-location compare-and-swap helper.
-     */
-    private static class CASNDescriptor {
+    private static abstract class AbstractCASNDescriptor {
         final CASNRef<Status> status;
-        final Cell list;
 
-        CASNDescriptor(Cell l) {
+        AbstractCASNDescriptor() {
             status = new CASNRef<Status>(Status.UNDECIDED);
-            list = l;
+        }
+
+        abstract boolean casnUpdate();
+
+        final Status prepare(Status s, CASNRef ref, Object o) {
+            RDCSSDescriptor d = new RDCSSDescriptor(
+                    status, Status.UNDECIDED, ref, o, this);
+            while (true) {
+                Object r = d.update();
+                if (r instanceof AbstractCASNDescriptor) {
+                    if (r != this) {
+                        //noinspection CastToConcreteClass
+                        ((AbstractCASNDescriptor) r).casnUpdate();
+                        continue;
+                    }
+                }
+                else if (r != o) {
+                    s = Status.FAILED;
+                }
+                break;
+            }
+            return s;
         }
 
         @SuppressWarnings({"unchecked"})
+        final void commit(CASNRef ref, Object n) {
+            ref.compareAndSwap(this, n);
+        }
+
+        @SuppressWarnings({"unchecked"})
+        final void rollback(CASNRef ref, Object o) {
+            ref.compareAndSwap(this, o);
+        }
+    }
+
+    /**
+     * 2-location compare-and-swap helper.
+     */
+    private static final class CAS2Descriptor<A, B>
+            extends AbstractCASNDescriptor {
+        final CASNRef<A> ref1;
+        final A o1, n1;
+        final CASNRef<B> ref2;
+        final B o2, n2;
+
+        CAS2Descriptor(CASNRef<A> ref1, A o1, A n1,
+                       CASNRef<B> ref2, B o2, B n2) {
+            this.ref1 = ref1;
+            this.o1 = o1;
+            this.n1 = n1;
+            this.ref2 = ref2;
+            this.o2 = o2;
+            this.n2 = n2;
+        }
+
+        @Override
+        boolean casnUpdate() {
+            // Phase 1
+            if (status.ref.get() == Status.UNDECIDED) {
+                Status s = Status.SUCCEEDED;
+                s = prepare(s, ref1, o1);
+                if (s == Status.SUCCEEDED) {
+                    s = prepare(s, ref2, o2);
+                }
+                status.compareAndSwap(Status.UNDECIDED, s);
+            }
+            // Phase 2
+            if (status.ref.get() == Status.SUCCEEDED) {
+                commit(ref1, n1);
+                commit(ref2, n2);
+                return true;
+            }
+            else {
+                rollback(ref1, o1);
+                rollback(ref2, o2);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * 3-location compare-and-swap helper.
+     */
+    private static final class CAS3Descriptor<A, B, C>
+            extends AbstractCASNDescriptor {
+        final CASNRef<A> ref1;
+        final A o1, n1;
+        final CASNRef<B> ref2;
+        final B o2, n2;
+        final CASNRef<C> ref3;
+        final C o3, n3;
+
+        CAS3Descriptor(CASNRef<A> ref1, A o1, A n1,
+                       CASNRef<B> ref2, B o2, B n2,
+                       CASNRef<C> ref3, C o3, C n3) {
+            this.ref1 = ref1;
+            this.o1 = o1;
+            this.n1 = n1;
+            this.ref2 = ref2;
+            this.o2 = o2;
+            this.n2 = n2;
+            this.ref3 = ref3;
+            this.o3 = o3;
+            this.n3 = n3;
+        }
+
+        @Override
+        boolean casnUpdate() {
+            // Phase 1
+            if (status.ref.get() == Status.UNDECIDED) {
+                Status s = Status.SUCCEEDED;
+                s = prepare(s, ref1, o1);
+                if (s == Status.SUCCEEDED) {
+                    s = prepare(s, ref2, o2);
+                    if (s == Status.SUCCEEDED) {
+                        s = prepare(s, ref3, o3);
+                    }
+                }
+                status.compareAndSwap(Status.UNDECIDED, s);
+            }
+            // Phase 2
+            if (status.ref.get() == Status.SUCCEEDED) {
+                commit(ref1, n1);
+                commit(ref2, n2);
+                commit(ref3, n3);
+                return true;
+            }
+            else {
+                rollback(ref1, o1);
+                rollback(ref2, o2);
+                rollback(ref3, o3);
+                return false;
+            }
+        }
+    }
+
+    /**
+     * Multi-location compare-and-swap helper.
+     */
+    private static final class CASNDescriptor
+            extends AbstractCASNDescriptor {
+        final Cell list;
+
+        CASNDescriptor(Cell l) {
+            list = l;
+        }
+
+        @Override
         boolean casnUpdate() {
             // Phase 1
             if (status.ref.get() == Status.UNDECIDED) {
                 Status s = Status.SUCCEEDED;
                 for (Cell cell = list; cell != null; cell = cell.next) {
-                    RDCSSDescriptor d = new RDCSSDescriptor(
-                            status, Status.UNDECIDED, cell.ref, cell.o, this);
-                    while (true) {
-                        Object r = d.update();
-                        if (r instanceof CASNDescriptor) {
-                            if (r != this) {
-                                //noinspection CastToConcreteClass
-                                ((CASNDescriptor) r).casnUpdate();
-                                continue;
-                            }
-                        }
-                        else if (r != cell.o) {
-                            s = Status.FAILED;
-                        }
-                        break;
-                    }
+                    s = prepare(s, cell.ref, cell.o);
                     if (s != Status.SUCCEEDED) {
                         break;
                     }
@@ -166,13 +291,13 @@ public final class CASNRef<T> {
             // Phase 2
             if (status.ref.get() == Status.SUCCEEDED) {
                 for (Cell cell = list; cell != null; cell = cell.next) {
-                    cell.ref.compareAndSwap(this, cell.n);
+                    commit(cell.ref, cell.n);
                 }
                 return true;
             }
             else {
                 for (Cell cell = list; cell != null; cell = cell.next) {
-                    cell.ref.compareAndSwap(this, cell.o);
+                    rollback(cell.ref, cell.o);
                 }
                 return false;
             }
@@ -198,6 +323,19 @@ public final class CASNRef<T> {
      */
     public boolean cas(@Nullable T o, @Nullable T n) {
         return new CASNDescriptor(new Cell(this, o, n)).casnUpdate();
+    }
+
+    public static <A, B> boolean cas2(CASNRef<A> ref1, A o1, A n1,
+                                      CASNRef<B> ref2, B o2, B n2) {
+        return new CAS2Descriptor<A, B>(ref1, o1, n1, ref2, o2, n2)
+                .casnUpdate();
+    }
+
+    public static <A, B, C> boolean cas3(CASNRef<A> ref1, A o1, A n1,
+                                         CASNRef<B> ref2, B o2, B n2,
+                                         CASNRef<C> ref3, C o3, C n3) {
+        return new CAS3Descriptor<A, B, C>(ref1, o1, n1, ref2, o2, n2, ref3, o3, n3)
+                .casnUpdate();
     }
 
     /**
@@ -270,11 +408,11 @@ public final class CASNRef<T> {
         Object v;
         while (true) {
             v = rdcssGet();
-            if (!(v instanceof CASNDescriptor)) {
+            if (!(v instanceof AbstractCASNDescriptor)) {
                 break;
             }
             //noinspection CastToConcreteClass
-            ((CASNDescriptor) v).casnUpdate();
+            ((AbstractCASNDescriptor) v).casnUpdate();
         }
         return v;
     }
