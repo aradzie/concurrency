@@ -378,9 +378,10 @@ public final class CASNRef<T> {
      * Object expected = ...
      * Object next = ...
      * Object current;
-     * if ((current = casImpl(expected, next)) == expected) {
+     * if ((current = compareAndSwap(expected, next)) == expected) {
      *     // succeeded
-     * } else {
+     * }
+     * else {
      *     // failed, examine current value
      * }
      * </code></pre>
