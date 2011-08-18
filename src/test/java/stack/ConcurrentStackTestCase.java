@@ -14,6 +14,8 @@ import static org.junit.Assert.*;
 public abstract class ConcurrentStackTestCase {
     private static final String SEQUENTIAL = "sequential";
     private static final String CONCURRENT = "concurrent";
+    private static final int CONCURRENCY =
+            Runtime.getRuntime().availableProcessors();
 
     protected abstract <T> ConcurrentStack<T> create();
 
@@ -88,8 +90,7 @@ public abstract class ConcurrentStackTestCase {
         {
             ConcurrentStack<Integer> stack = create();
 
-            LoaderGroup group = new LoaderGroup(stack,
-                    Runtime.getRuntime().availableProcessors());
+            LoaderGroup group = new LoaderGroup(stack, CONCURRENCY);
 
             group.start();
             group.join();
@@ -101,8 +102,7 @@ public abstract class ConcurrentStackTestCase {
         {
             ConcurrentStack<Integer> stack = create();
 
-            LoaderGroup group = new LoaderGroup(stack,
-                    Runtime.getRuntime().availableProcessors());
+            LoaderGroup group = new LoaderGroup(stack, CONCURRENCY);
 
             group.start();
             group.join();
@@ -128,7 +128,8 @@ public abstract class ConcurrentStackTestCase {
             for (T runner : this) {
                 try {
                     runner.join();
-                } catch (InterruptedException ex) {
+                }
+                catch (InterruptedException ex) {
                 }
             }
         }
