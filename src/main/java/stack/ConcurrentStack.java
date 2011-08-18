@@ -3,6 +3,7 @@ package stack;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * The simplest concurrent stack interface ever possible.
@@ -32,30 +33,49 @@ public interface ConcurrentStack<T> {
      * @param <T> Stack element type.
      */
     class Blocking<T> implements ConcurrentStack<T> {
+        private final ReentrantLock lock = new ReentrantLock();
         private final ArrayList<T> list = new ArrayList<T>();
 
         @Override
-        public synchronized void push(@Nonnull T e) {
+        public void push(@Nonnull T e) {
             if (e == null) {
                 throw new NullPointerException();
             }
-            list.add(e);
+            lock.lock();
+            try {
+                list.add(e);
+            }
+            finally {
+                lock.unlock();
+            }
         }
 
         @Override
-        public synchronized T peek() {
-            if (list.isEmpty()) {
-                return null;
+        public T peek() {
+            lock.lock();
+            try {
+                if (list.isEmpty()) {
+                    return null;
+                }
+                return list.get(list.size() - 1);
             }
-            return list.get(list.size() - 1);
+            finally {
+                lock.unlock();
+            }
         }
 
         @Override
-        public synchronized T pop() {
-            if (list.isEmpty()) {
-                return null;
+        public T pop() {
+            lock.lock();
+            try {
+                if (list.isEmpty()) {
+                    return null;
+                }
+                return list.remove(list.size() - 1);
             }
-            return list.remove(list.size() - 1);
+            finally {
+                lock.unlock();
+            }
         }
     }
 }
