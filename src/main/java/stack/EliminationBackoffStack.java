@@ -21,7 +21,7 @@ import java.util.concurrent.atomic.AtomicReferenceArray;
  * @param <T> Stack element type.
  * @see ThreadId
  */
-public class EliminationBackoffStack<T> implements ConcurrentStack<T> {
+public final class EliminationBackoffStack<T> implements ConcurrentStack<T> {
     private static class Node<T> {
         final T value;
         volatile Node<T> next;

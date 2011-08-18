@@ -5,7 +5,7 @@ import util.Backoff;
 import javax.annotation.Nonnull;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class BackoffLockFreeStack<T> implements ConcurrentStack<T> {
+public final class BackoffLockFreeStack<T> implements ConcurrentStack<T> {
     private static class Node<T> {
         final T value;
         volatile Node<T> next;
