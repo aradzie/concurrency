@@ -1,21 +1,12 @@
 package stack;
 
 import javax.annotation.Nonnull;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public final class FlatCombiningStack<T> implements ConcurrentStack<T> {
-    private static final class Node<T> {
-        final T value;
-        final Node<T> next;
-
-        Node(T value, Node<T> next) {
-            this.value = value;
-            this.next = next;
-        }
-    }
-
     private enum OpCode {
         PUSH,
         PEEK,
@@ -34,55 +25,44 @@ public final class FlatCombiningStack<T> implements ConcurrentStack<T> {
         }
 
         void enqueue(FlatCombiningStack<T> stack) {
-            while (true) {
+            do {
                 next = stack.queue.get();
-                if (stack.queue.compareAndSet(next, this)) {
-                    break;
-                }
-            }
+            } while (!stack.queue.compareAndSet(next, this));
         }
 
         void invoke(FlatCombiningStack<T> stack) {
-            if (ready) {
-                return;
-            }
             switch (opCode) {
                 case PUSH:
-                    stack.head = new Node<T>(value, stack.head);
+                    stack.list.add(value);
                     break;
                 case PEEK:
-                    if (stack.head != null) {
-                        value = stack.head.value;
+                    if (stack.list.isEmpty()) {
+                        value = null;
                     }
                     else {
-                        value = null;
+                        value = stack.list.get(stack.list.size() - 1);
                     }
                     break;
                 case POP:
-                    if (stack.head != null) {
-                        value = stack.head.value;
-                        stack.head = stack.head.next;
+                    if (stack.list.isEmpty()) {
+                        value = null;
                     }
                     else {
-                        value = null;
+                        value = stack.list.remove(stack.list.size() - 1);
                     }
                     break;
             }
-            ready = true;
         }
     }
 
     private final Lock lock;
     private final AtomicReference<Op<T>> queue;
-    private Node<T> head;
+    private final ArrayList<T> list;
 
     public FlatCombiningStack() {
-        this(new ReentrantLock());
-    }
-
-    public FlatCombiningStack(Lock lock) {
-        this.lock = lock;
+        lock = new ReentrantLock();
         queue = new AtomicReference<Op<T>>();
+        list = new ArrayList<T>();
     }
 
     @Override
@@ -127,12 +107,22 @@ public final class FlatCombiningStack<T> implements ConcurrentStack<T> {
     }
 
     private void scanCombine() {
-        Op<T> op = queue.get();
-        while (op != null) {
-            op.invoke(this);
-            Op<T> next = op.next;
-            op.next = null;
-            op = next;
+        Op<T> lastHead = null;
+        for (int round = 0; round < 20; round++) {
+            Op<T> head = queue.get();
+            if (head == lastHead) {
+                break;
+            }
+            Op<T> op = head;
+            while (op != lastHead) {
+                if (!op.ready) {
+                    op.invoke(this);
+                    op.ready = true;
+                }
+                op = op.next;
+            }
+            head.next = null;
+            lastHead = head;
         }
     }
 }
